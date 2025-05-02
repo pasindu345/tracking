@@ -3,7 +3,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
 # Replace this with your own Telegram bot token
-BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
+BOT_TOKEN = "7769288032:AAEjoz_6A0F8LegZ8sj_Dsr6Fp2aqad7o4A"
 AFTERSHIP_API_KEY = "asat_5f44f63363474b8db81bfd0ae9aee7ae"
 AFTERSHIP_API_URL = "https://api.aftership.com/v4/trackings"
 
