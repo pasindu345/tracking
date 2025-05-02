@@ -21,11 +21,29 @@ def get_tracking_info(tracking_number, slug="dhl-global-mail-asia"):
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         data = response.json()["data"]["tracking"]
+        status = data["tag"]
+        custom_message = ""
+
+        # Custom messages based on status
+        if status == "in_transit":
+            custom_message = "🚚 Your package is in transit. It’s on the way!"
+        elif status == "arrived":
+            custom_message = "✈️ Your package has arrived at the airport."
+        elif status == "delivered":
+            custom_message = "📦 Your package has been delivered."
+        elif status == "expired":
+            custom_message = "❌ The tracking information has expired."
+        elif status == "failed":
+            custom_message = "⚠️ Delivery failed. Please contact the courier."
+        else:
+            custom_message = "📍 Status update is not available."
+
         return {
             "number": data["tracking_number"],
             "slug": data["slug"],
-            "status": data["tag"],
-            "last_update": data.get("expected_delivery", data.get("updated_at", "Not Available"))
+            "status": status,
+            "last_update": data.get("expected_delivery", data.get("updated_at", "Not Available")),
+            "custom_message": custom_message
         }
     else:
         return None
@@ -56,7 +74,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🔢 *Number*: `{info['number']}`\n"
             f"🚚 *Courier*: `{info['slug']}`\n"
             f"📍 *Status*: `{info['status']}`\n"
-            f"🕒 *Last Updated*: `{info['last_update']}`"
+            f"🕒 *Last Updated*: `{info['last_update']}`\n\n"
+            f"📝 *Message*: {info['custom_message']}"
         )
     else:
         reply = "❌ Tracking number not found or invalid."
