@@ -1,5 +1,6 @@
 import logging
 import requests
+import json
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
@@ -7,7 +8,10 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, Con
 TELEGRAM_BOT_TOKEN = "7769288032:AAEjoz_6A0F8LegZ8sj_Dsr6Fp2aqad7o4A"
 AFTERSHIP_API_KEY = "asat_5f44f63363474b8db81bfd0ae9aee7ae"
 
-# 🧠 Function to get tracking status
+# File to store tracking numbers and their updates
+TRACKING_HISTORY_FILE = "tracking_history.json"
+
+# 🧠 Function to get tracking info
 def get_tracking_info(tracking_number, slug="dhl-global-mail-asia"):
     url = f"https://api.aftership.com/v4/trackings/{slug}/{tracking_number}"
     headers = {
@@ -26,11 +30,27 @@ def get_tracking_info(tracking_number, slug="dhl-global-mail-asia"):
     else:
         return None
 
+# 🧠 Function to store tracking history
+def store_tracking_history(tracking_number, status):
+    try:
+        with open(TRACKING_HISTORY_FILE, "r") as file:
+            history = json.load(file)
+    except FileNotFoundError:
+        history = {}
+
+    history[tracking_number] = status
+
+    with open(TRACKING_HISTORY_FILE, "w") as file:
+        json.dump(history, file, indent=4)
+
 # 📥 Handle user messages
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tracking_number = update.message.text.strip()
     info = get_tracking_info(tracking_number)
     if info:
+        # Store the tracking update
+        store_tracking_history(tracking_number, info["status"])
+
         reply = (
             f"📦 *Tracking Info*\n\n"
             f"🔢 *Number*: `{info['number']}`\n"
@@ -43,9 +63,25 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(reply, parse_mode="Markdown")
 
+# 📜 List all tracking numbers
+async def list_trackings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        with open(TRACKING_HISTORY_FILE, "r") as file:
+            history = json.load(file)
+        if history:
+            reply = "📜 *Tracking Numbers History*\n\n"
+            for tracking, status in history.items():
+                reply += f"🔢 *Number*: `{tracking}` - *Status*: `{status}`\n"
+        else:
+            reply = "❌ No tracking numbers found."
+    except FileNotFoundError:
+        reply = "❌ No tracking history found."
+    
+    await update.message.reply_text(reply, parse_mode="Markdown")
+
 # ▶️ Start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👋 Send me your tracking number (e.g., `AELKS04667409DEX`) to get status!")
+    await update.message.reply_text("👋 Send me your tracking number (e.g., `AELKS04667409DEX`) to get status!\n\nUse /trackings to view your tracking history.")
 
 # 🔁 Main
 if __name__ == "__main__":
@@ -53,6 +89,7 @@ if __name__ == "__main__":
     app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("trackings", list_trackings))  # Add /trackings command
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     print("Bot is running...")
